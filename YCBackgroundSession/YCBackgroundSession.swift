@@ -15,33 +15,36 @@ enum YCBackgroundSessionType {
 
 class YCBackgroundSession: NSObject {
     
-    // MARK: public properties
+    // MARK: - public properties
     static let bgSession = YCBackgroundSession.init()
     var tasksCount = 3
     
-    // MARK: private properties
+    // MARK: - private properties
     private lazy var uploadSession = { () -> URLSession in return self.getBackgroundSession(type: .upload) }()
     private lazy var downloadSession = { () -> URLSession in return self.getBackgroundSession(type: .download) }()
     private lazy var uploadTasksDictM = { () -> [String: YCSessionTask] in return self.getUploadTasks() }()
     private lazy var downloadTasksDictM = { () -> [String: YCSessionTask] in return self.getDownloadTasks() }()
 
-    // MARK: init
+    // MARK: - init
     override init() {
         super.init()
     }
 
-    // MARK: download public
-    @objc func download(url: String, fileId: String?, delegate: Any?){
+    // MARK: - download public
+    @objc func download(url: String, fileId: String?, delegate: YCSessionTaskDelegate?){
         
-        if downloadTasksDictM[url] != nil {
-            resumeDownload(task: downloadTasksDictM[url]!)
+        let downloadId = YCSessionTask.downloadId(url: url, fileId: fileId)
+        var task = downloadTasksDictM[downloadId]
+        if task != nil {
+            task?.delegate = delegate
+            resumeDownload(task: task!)
             return;
         }
-        let task = YCSessionTask(url: url, delegate: delegate, fileId: fileId)
+        task = YCSessionTask(url: url, delegate: delegate, fileId: fileId)
         if currentTaskCount() < tasksCount {
-            startDownload(task: task)
+            startDownload(task: task!)
         }
-        downloadTasksDictM[url] = task
+        downloadTasksDictM[downloadId] = task
         downloadStatusChanged(task: task, status: .waiting)
     }
     
@@ -53,7 +56,7 @@ class YCBackgroundSession: NSObject {
         }
     }
     
-    @objc func resumeDownload(url: String) {
+    @objc func resumeDownload(url: String, delegate: YCSessionTaskDelegate?) {
         
         if let task =  downloadTasksDictM[url] {
             resumeDownload(task: task)
@@ -68,10 +71,10 @@ class YCBackgroundSession: NSObject {
         }
     }
     
-    // MARK: upload public
+    // MARK: - upload public
     
     
-    // MARK: download private
+    // MARK: - download private
     private func startDownload(task: YCSessionTask) {
         let request = URLRequest(url: URL(string: task.url)!)
         let sessionTask = downloadSession.downloadTask(with: request)
@@ -98,7 +101,7 @@ class YCBackgroundSession: NSObject {
     private func stopDownload(task: YCSessionTask) {
         task.downloadTask?.cancel()
         removeDiskFile(task: task)
-        downloadTasksDictM.removeValue(forKey: task.url)
+        downloadTasksDictM.removeValue(forKey: YCSessionTask.downloadId(url: task.url, fileId: task.fileId))
         saveInfo()
     }
     
@@ -114,6 +117,9 @@ class YCBackgroundSession: NSObject {
     private func downloadStatusChanged(task: YCSessionTask?, status: YCSessionTaskStatus){
         task?.taskStatus = status
         saveInfo()
+        if ((task?.delegate) != nil) && (task?.delegate?.responds(to: #selector(YCSessionTaskDelegate.downloadStatusChanged(task:))))! {
+            task?.delegate?.downloadStatusChanged(task: task!)
+        }
         startNextDownload()
     }
     
@@ -133,9 +139,9 @@ class YCBackgroundSession: NSObject {
         try? FileManager.default.removeItem(atPath: task.savePath())
     }
     
-    // MARK: upload private
+    // MARK: - upload private
     
-    // MARK: task init private
+    // MARK: - task init private
     private func getBackgroundSession(type: YCBackgroundSessionType) -> URLSession{
         
         let bundleId = Bundle.main.infoDictionary!["CFBundleIdentifier"] as! String
@@ -217,29 +223,33 @@ extension YCBackgroundSession:URLSessionDelegate, URLSessionTaskDelegate, URLSes
         let task = taskForUrlSessionTask(sessionTask: downloadTask)
         task?.completedSize = totalBytesWritten
         if task?.fileSize == 0 {
-            task?.updateInfo(request: downloadTask.originalRequest)
+            task?.updateInfo(response: downloadTask.response as? HTTPURLResponse)
+        }
+        if ((task?.delegate) != nil) && (task?.delegate?.responds(to: #selector(YCSessionTaskDelegate.downloadProgress(downloadSize:fileSize:))))! {
+            task?.delegate?.downloadProgress(downloadSize: totalBytesWritten, fileSize: totalBytesExpectedToWrite)
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         
-        print("didCompleteWithError")
         let downloadTask = taskForUrlSessionTask(sessionTask: task)
-        if let errInfo = (error as NSError?)?.userInfo{
+        if let err = error{
+            let errInfo = (err as NSError).userInfo
             let resumeData = errInfo["NSURLSessionDownloadTaskResumeData"]
             if let data = resumeData as? Data{
                 downloadTask?.resumeData = data
                 downloadStatusChanged(task: downloadTask, status: .paused)
+                print("pause success! resumeDataLength: \((resumeData as! NSData).length)")
                 return
             }
-            print("didCompleteWithError: " + errInfo.debugDescription)
         }
+        print("didCompleteWithError : " + error.debugDescription)
         downloadStatusChanged(task: downloadTask, status: .failed)
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
         
-        print("download progress: \(Float(totalBytesSent) / Float(totalBytesExpectedToSend))")
+        print("upload progress: \(Float(totalBytesSent) / Float(totalBytesExpectedToSend))")
     }
     
 }

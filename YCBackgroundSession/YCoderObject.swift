@@ -8,10 +8,10 @@
 
 import UIKit
 
-class YCoderObject: NSObject, NSCoding {
+public class YCoderObject: NSObject, NSCoding {
     
     //归档
-    func encode(with aCoder: NSCoder) {
+    public func encode(with aCoder: NSCoder) {
         
         var count: UInt32 = 0
         
@@ -34,7 +34,7 @@ class YCoderObject: NSObject, NSCoding {
     }
     
     //解档
-    required init?(coder aDecoder: NSCoder) {
+    required public init?(coder aDecoder: NSCoder) {
         
         super.init()
         

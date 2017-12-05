@@ -8,6 +8,11 @@
 
 import UIKit
 
+@objc public protocol YCSessionTaskDelegate: NSObjectProtocol {
+    func downloadStatusChanged(task: YCSessionTask) -> Void
+    func downloadProgress(downloadSize: Int64, fileSize: Int64)
+}
+
 @objc enum YCSessionTaskStatus: Int {
     case waiting
     case downloading
@@ -16,12 +21,12 @@ import UIKit
     case finished
 }
 
-class YCSessionTask: YCoderObject {
+public class YCSessionTask: YCoderObject {
 
     @objc dynamic var url: String
     @objc dynamic var fileId: String?
     @objc dynamic var filePath: String?
-    @objc dynamic var delegate: Any?
+    @objc dynamic var delegate: YCSessionTaskDelegate?
     @objc dynamic var downloadTask: URLSessionDownloadTask?
     @objc dynamic var uploadTask: URLSessionUploadTask?
     @objc dynamic var taskStatus: YCSessionTaskStatus = .waiting
@@ -29,16 +34,17 @@ class YCSessionTask: YCoderObject {
     @objc dynamic var completedSize: Int64 = 0
     @objc dynamic var resumeData: Data?
     @objc dynamic var suggestName: String?
+    @objc dynamic var tmpName: String? //decode resumeData
 
-    
-    init(url: String, delegate: Any?, fileId: String?) {
+    // MARK: - init
+    init(url: String, delegate: YCSessionTaskDelegate?, fileId: String?) {
         self.url = url
         self.delegate = delegate
         self.fileId = fileId
         super.init()
     }
     
-    required init?(coder aDecoder: NSCoder) {
+    required public init?(coder aDecoder: NSCoder) {
         self.url = aDecoder.decodeObject(forKey: "url") as! String
         super.init(coder: aDecoder)
     }
@@ -47,32 +53,34 @@ class YCSessionTask: YCoderObject {
         return ["delegate", "downloadTask", "uploadTask"]
     }
     
-    // MARK: private
+    // MARK: - private
     
-    
-    
-    // MARK: public
-    @objc func updateInfo(request: URLRequest?) {
-        
-        if let oriRequest = request as NSURLRequest? {
-            print(oriRequest.allHTTPHeaderFields)
-        }
-        print(request?.allHTTPHeaderFields)
-        
+
+    // MARK: - public
+    @objc func updateInfo(response: HTTPURLResponse?) {
+        suggestName = response?.suggestedFilename
+        fileSize = response?.expectedContentLength ?? 0
+        print(self.savePath())
     }
     
     @objc func savePath() -> String{
-        return ""
+        return YCSessionTask.saveDir() + "/" + saveName()
     }
     
     @objc func saveName() -> String {
-        let name = url + (fileId ?? "")
+        let name = YCSessionTask.downloadId(url: self.url, fileId: self.fileId)
         if let pathExtension = url.components(separatedBy: ".").last {
-            return (MD5(name) + "." + pathExtension)
+            return (name + pathExtension)
         }
         if let pathExtension = suggestName?.components(separatedBy: ".").last {
-            return (MD5(name) + "." + pathExtension)
+            return (name + pathExtension)
         }
+        return name
+    }
+    
+    @objc class func downloadId(url: String, fileId: String?) -> String {
+        
+        let name = url + (fileId ?? "")
         return MD5(name)
     }
 

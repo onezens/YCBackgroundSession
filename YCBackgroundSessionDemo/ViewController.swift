@@ -33,10 +33,22 @@ class ViewController: UIViewController {
         YCBackgroundSession.bgSession.pauseDownload(url: downloadUrl)
     }
     @IBAction func resume(_ sender: Any) {
-        YCBackgroundSession.bgSession.resumeDownload(url: downloadUrl)
+        YCBackgroundSession.bgSession.resumeDownload(url: downloadUrl, delegate: self)
     }
     @IBAction func remove(_ sender: Any) {
         YCBackgroundSession.bgSession.removeDownload(url: downloadUrl)
+    }
+    
+    
+}
+
+extension ViewController: YCSessionTaskDelegate {
+    func downloadStatusChanged(task: YCSessionTask) {
+        
+    }
+    
+    func downloadProgress(downloadSize: Int64, fileSize: Int64) {
+        self.progressLbl.text = "\(Float(downloadSize) / Float(fileSize))"
     }
     
     
