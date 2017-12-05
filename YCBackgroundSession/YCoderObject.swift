@@ -10,8 +10,6 @@ import UIKit
 
 class YCoderObject: NSObject, NSCoding {
     
-    var ignoreKey = [String]()
-    
     //归档
     func encode(with aCoder: NSCoder) {
         
@@ -23,9 +21,11 @@ class YCoderObject: NSObject, NSCoding {
             
             let ivar = ivars?[Int(i)]
             let name = String.init(cString: ivar_getName(ivar!)!, encoding: .utf8)
-            if ignoreKey.contains(name!) { continue }
             if let varName = name {
-                aCoder.encode(value(forKey: varName), forKey: varName)
+                let ignoreKey = self.getIgnoreKey()
+                if ignoreKey.contains(varName) { continue }
+                let value = super.value(forKey: varName)
+                aCoder.encode(value, forKey: varName)
             }
         }
         
@@ -46,8 +46,9 @@ class YCoderObject: NSObject, NSCoding {
             
             let ivar = ivars?[Int(i)]
             let name = String.init(cString: ivar_getName(ivar!)!, encoding: .utf8)
-            if ignoreKey.contains(name!) { continue }
             if let varName = name {
+                let ignoreKey = self.getIgnoreKey()
+                if ignoreKey.contains(varName) { continue }
                 setValue(aDecoder.decodeObject(forKey: varName), forKey: varName)
             }
         }
@@ -59,4 +60,9 @@ class YCoderObject: NSObject, NSCoding {
         super.init()
     }
     
+    @objc func getIgnoreKey() -> [String] {
+        return [String]()
+    }
+    
+
 }

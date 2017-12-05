@@ -12,10 +12,10 @@
 		353328981FD4DF0100222743 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 353328971FD4DF0100222743 /* Assets.xcassets */; };
 		3533289B1FD4DF0100222743 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 353328991FD4DF0100222743 /* LaunchScreen.storyboard */; };
 		353328A41FD4E02D00222743 /* YCBackgroundSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353328A31FD4E02D00222743 /* YCBackgroundSession.swift */; };
-		353328A61FD4E04300222743 /* YCSessionItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353328A51FD4E04300222743 /* YCSessionItem.swift */; };
 		353328A81FD4E06600222743 /* YCSessionTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353328A71FD4E06600222743 /* YCSessionTask.swift */; };
 		353328AA1FD55A2900222743 /* YCoderObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353328A91FD55A2900222743 /* YCoderObject.swift */; };
 		353328AC1FD5611D00222743 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 353328AB1FD560D000222743 /* Main.storyboard */; };
+		3563C8ED1FD68DC700024779 /* md5.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3563C8EC1FD68DC700024779 /* md5.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,10 +26,10 @@
 		3533289A1FD4DF0100222743 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		3533289C1FD4DF0100222743 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		353328A31FD4E02D00222743 /* YCBackgroundSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YCBackgroundSession.swift; sourceTree = "<group>"; };
-		353328A51FD4E04300222743 /* YCSessionItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YCSessionItem.swift; sourceTree = "<group>"; };
 		353328A71FD4E06600222743 /* YCSessionTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YCSessionTask.swift; sourceTree = "<group>"; };
 		353328A91FD55A2900222743 /* YCoderObject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YCoderObject.swift; sourceTree = "<group>"; };
 		353328AB1FD560D000222743 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
+		3563C8EC1FD68DC700024779 /* md5.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = md5.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,8 +78,8 @@
 			children = (
 				353328A31FD4E02D00222743 /* YCBackgroundSession.swift */,
 				353328A71FD4E06600222743 /* YCSessionTask.swift */,
-				353328A51FD4E04300222743 /* YCSessionItem.swift */,
 				353328A91FD55A2900222743 /* YCoderObject.swift */,
+				3563C8EC1FD68DC700024779 /* md5.swift */,
 			);
 			path = YCBackgroundSession;
 			sourceTree = SOURCE_ROOT;
@@ -157,7 +157,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				353328A41FD4E02D00222743 /* YCBackgroundSession.swift in Sources */,
-				353328A61FD4E04300222743 /* YCSessionItem.swift in Sources */,
+				3563C8ED1FD68DC700024779 /* md5.swift in Sources */,
 				353328AA1FD55A2900222743 /* YCoderObject.swift in Sources */,
 				353328A81FD4E06600222743 /* YCSessionTask.swift in Sources */,
 				353328931FD4DF0100222743 /* ViewController.swift in Sources */,
@@ -227,7 +227,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -278,7 +278,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";

@@ -38,12 +38,11 @@ class YCBackgroundSession: NSObject {
             return;
         }
         let task = YCSessionTask(url: url, delegate: delegate, fileId: fileId)
-        if currentTaskCount() >= tasksCount {
-            downloadStatusChanged(task: task, status: .waiting)
-        }else{
+        if currentTaskCount() < tasksCount {
             startDownload(task: task)
         }
         downloadTasksDictM[url] = task
+        downloadStatusChanged(task: task, status: .waiting)
     }
     
     @objc func pauseDownload(url: String) {
@@ -81,10 +80,8 @@ class YCBackgroundSession: NSObject {
     }
     
     private func pauseDownload(task: YCSessionTask) {
-        task.downloadTask?.cancel(byProducingResumeData: { (resumeData) in
-            task.resumeData = resumeData
-            print(resumeData)
-        })
+        //resumeData save at urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?)
+        task.downloadTask?.cancel(byProducingResumeData: { (resumeData) in })
     }
     
     private func resumeDownload(task: YCSessionTask) {
@@ -99,11 +96,25 @@ class YCBackgroundSession: NSObject {
     }
     
     private func stopDownload(task: YCSessionTask) {
-        
+        task.downloadTask?.cancel()
+        removeDiskFile(task: task)
+        downloadTasksDictM.removeValue(forKey: task.url)
+        saveInfo()
     }
     
-    private func downloadStatusChanged(task: YCSessionTask, status: YCSessionTaskStatus){
-        task.taskStatus = status
+    private func stopAllDownload() {
+        for (_, task) in downloadTasksDictM {
+            task.downloadTask?.cancel()
+            removeDiskFile(task: task)
+        }
+        downloadTasksDictM.removeAll()
+        saveInfo()
+    }
+    
+    private func downloadStatusChanged(task: YCSessionTask?, status: YCSessionTaskStatus){
+        task?.taskStatus = status
+        saveInfo()
+        startNextDownload()
     }
     
     private func startNextDownload() {
@@ -116,6 +127,10 @@ class YCBackgroundSession: NSObject {
                 }
             }
         }
+    }
+    
+    private func removeDiskFile(task: YCSessionTask) {
+        try? FileManager.default.removeItem(atPath: task.savePath())
     }
     
     // MARK: upload private
@@ -169,6 +184,15 @@ class YCBackgroundSession: NSObject {
         return 0
     }
     
+    private func taskForUrlSessionTask(sessionTask: URLSessionTask) -> YCSessionTask? {
+        
+        if let taskUrl = sessionTask.originalRequest?.url?.absoluteString {
+            return self.downloadTasksDictM[taskUrl]
+        }
+        return nil
+        
+    }
+    
     
 }
 
@@ -188,23 +212,34 @@ extension YCBackgroundSession:URLSessionDelegate, URLSessionTaskDelegate, URLSes
         print("didBecomeInvalidWithError : " + error.debugDescription)
     }
     
-    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
-        
-        print("download progress: \(Float(totalBytesSent) / Float(totalBytesExpectedToSend))")
-    }
-    
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         print("download progress: \(Float(totalBytesWritten) / Float(totalBytesExpectedToWrite))")
+        let task = taskForUrlSessionTask(sessionTask: downloadTask)
+        task?.completedSize = totalBytesWritten
+        if task?.fileSize == 0 {
+            task?.updateInfo(request: downloadTask.originalRequest)
+        }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         
         print("didCompleteWithError")
-        if let err = error {
-            print(err)
-            startNextDownload()
+        let downloadTask = taskForUrlSessionTask(sessionTask: task)
+        if let errInfo = (error as NSError?)?.userInfo{
+            let resumeData = errInfo["NSURLSessionDownloadTaskResumeData"]
+            if let data = resumeData as? Data{
+                downloadTask?.resumeData = data
+                downloadStatusChanged(task: downloadTask, status: .paused)
+                return
+            }
+            print("didCompleteWithError: " + errInfo.debugDescription)
         }
+        downloadStatusChanged(task: downloadTask, status: .failed)
+    }
+    
+    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
         
+        print("download progress: \(Float(totalBytesSent) / Float(totalBytesExpectedToSend))")
     }
     
 }
