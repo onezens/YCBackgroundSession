@@ -16,36 +16,57 @@ enum YCBackgroundSessionType {
 class YCBackgroundSession: NSObject {
     
     // MARK: public properties
-    static let backgroundSession = YCBackgroundSession()
+    static let bgSession = YCBackgroundSession.init()
+    var tasksCount = 3
     
     // MARK: private properties
     private lazy var uploadSession = { () -> URLSession in return self.getBackgroundSession(type: .upload) }()
     private lazy var downloadSession = { () -> URLSession in return self.getBackgroundSession(type: .download) }()
-    private lazy var uploadTasksDictM = { () -> NSMutableDictionary in return self.getUploadTasks() }()
-    private lazy var downloadTasksDictM = { () -> NSMutableDictionary in return self.getDownloadTasks() }()
-    
+    private lazy var uploadTasksDictM = { () -> [String: YCSessionTask] in return self.getUploadTasks() }()
+    private lazy var downloadTasksDictM = { () -> [String: YCSessionTask] in return self.getDownloadTasks() }()
+
     // MARK: init
     override init() {
         super.init()
     }
 
     // MARK: download public
-    @objc func downloadFile(url: String, fileId: String?, delegate: Any?){
+    @objc func download(url: String, fileId: String?, delegate: Any?){
+        
+        if downloadTasksDictM[url] != nil {
+            resumeDownload(task: downloadTasksDictM[url]!)
+            return;
+        }
         let task = YCSessionTask(url: url, delegate: delegate, fileId: fileId)
-        startDownload(task: task)
+        if currentTaskCount() >= tasksCount {
+            downloadStatusChanged(task: task, status: .waiting)
+        }else{
+            startDownload(task: task)
+        }
+        downloadTasksDictM[url] = task
+    }
+    
+    @objc func pauseDownload(url: String) {
+        
+        if let task =  downloadTasksDictM[url] {
+            self.pauseDownload(task: task)
+            self.downloadStatusChanged(task: task, status: .paused)
+        }
+    }
+    
+    @objc func resumeDownload(url: String) {
+        
+        if let task =  downloadTasksDictM[url] {
+            resumeDownload(task: task)
+            self.downloadStatusChanged(task: task, status: .downloading)
+        }
         
     }
     
-    @objc func pauseDownloadFile(url: String) {
-        
-    }
-    
-    @objc func resumeDownloadFile(url: String) {
-        
-    }
-    
-    @objc func removeDownloadFile(url: String) {
-        
+    @objc func removeDownload(url: String) {
+        if let task =  downloadTasksDictM[url] {
+            stopDownload(task: task)
+        }
     }
     
     // MARK: upload public
@@ -62,6 +83,7 @@ class YCBackgroundSession: NSObject {
     private func pauseDownload(task: YCSessionTask) {
         task.downloadTask?.cancel(byProducingResumeData: { (resumeData) in
             task.resumeData = resumeData
+            print(resumeData)
         })
     }
     
@@ -69,6 +91,7 @@ class YCBackgroundSession: NSObject {
         
         if let resumeData = task.resumeData {
             task.downloadTask = downloadSession.downloadTask(withResumeData: resumeData)
+            task.downloadTask?.resume()
             downloadStatusChanged(task: task, status: .downloading)
             return
         }
@@ -83,40 +106,67 @@ class YCBackgroundSession: NSObject {
         task.taskStatus = status
     }
     
+    private func startNextDownload() {
+        
+        if currentTaskCount() < tasksCount {
+            for (_, task) in self.downloadTasksDictM {
+                if task.taskStatus == .waiting {
+                    startDownload(task: task)
+                    break
+                }
+            }
+        }
+    }
+    
     // MARK: upload private
     
     // MARK: task init private
     private func getBackgroundSession(type: YCBackgroundSessionType) -> URLSession{
         
         let bundleId = Bundle.main.infoDictionary!["CFBundleIdentifier"] as! String
-        let identifier = type == .upload ? bundleId+"YCUploadSession" : bundleId+"YCDownloadSession"
+        let identifier = type == .upload ? bundleId+".UploadSession" : bundleId+".DownloadSession"
         let sessionConf = URLSessionConfiguration.background(withIdentifier: identifier)
-        let bgSession = URLSession(configuration: sessionConf, delegate: self, delegateQueue: OperationQueue.main)
-        return bgSession
+        let bgUrlSession = URLSession(configuration: sessionConf, delegate: self, delegateQueue: OperationQueue.main)
+        return bgUrlSession
     }
     
     private func recreateSession(type: YCBackgroundSessionType) {
         
     }
     
-    private func getUploadTasks() -> NSMutableDictionary {
+    private func getUploadTasks() -> [String: YCSessionTask] {
         
         let path = YCSessionTask.saveDir() + "/upload.data"
-        var uploadTasks = NSKeyedUnarchiver.unarchiveObject(withFile: path)
-        if (uploadTasks as? NSMutableDictionary) == nil {
-            uploadTasks = NSMutableDictionary()
+        let uploadData = NSKeyedUnarchiver.unarchiveObject(withFile: path)
+        if let uploadTask = uploadData as? [String: YCSessionTask]{
+            return uploadTask
         }
-        return uploadTasks as! NSMutableDictionary
+        return [String: YCSessionTask]()
     }
     
-    private func getDownloadTasks() -> NSMutableDictionary {
+    private func getDownloadTasks() -> [String: YCSessionTask] {
         
         let path = YCSessionTask.saveDir() + "/download.data"
-        var downloadTasks = NSKeyedUnarchiver.unarchiveObject(withFile: path)
-        if (downloadTasks as? NSMutableDictionary) == nil {
-            downloadTasks = NSMutableDictionary()
+        let downloadData = NSKeyedUnarchiver.unarchiveObject(withFile: path)
+        if let downloadTasks = downloadData as? [String: YCSessionTask]{
+            return downloadTasks
         }
-        return downloadTasks as! NSMutableDictionary
+        return [String: YCSessionTask]()
+    }
+    
+    private func saveInfo() {
+        let uploadPath = YCSessionTask.saveDir() + "/upload.data"
+        let downloadPath = YCSessionTask.saveDir() + "/download.data"
+        NSKeyedArchiver.archiveRootObject(self.downloadTasksDictM, toFile: downloadPath)
+        NSKeyedArchiver.archiveRootObject(self.uploadTasksDictM, toFile: uploadPath)
+    }
+    
+    
+    private func currentTaskCount() -> Int {
+        if let tasksDictM = self.downloadSession.value(forKey: "tasks") as? NSMutableDictionary {
+            return tasksDictM.count
+        }
+        return 0
     }
     
     
@@ -124,29 +174,35 @@ class YCBackgroundSession: NSObject {
 
 
 // MARK: - URLSessionDelegate
-extension YCBackgroundSession:URLSessionDelegate, URLSessionTaskDelegate {
+extension YCBackgroundSession:URLSessionDelegate, URLSessionTaskDelegate, URLSessionDownloadDelegate, URLSessionDataDelegate {
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        print("didFinishDownloadingTo")
+    }
     
-    
+   
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
-        
+        print("urlSessionDidFinishEvents")
     }
     
     func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
         print("didBecomeInvalidWithError : " + error.debugDescription)
     }
     
-    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-    
-    }
-    
     func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
         
         print("download progress: \(Float(totalBytesSent) / Float(totalBytesExpectedToSend))")
     }
+    
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        print("download progress: \(Float(totalBytesWritten) / Float(totalBytesExpectedToWrite))")
+    }
+    
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         
+        print("didCompleteWithError")
         if let err = error {
             print(err)
+            startNextDownload()
         }
         
     }

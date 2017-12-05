@@ -26,14 +26,17 @@ class ViewController: UIViewController {
     }
     
     @IBAction func start(_ sender: Any) {
-        YCBackgroundSession.backgroundSession.downloadFile(url: downloadUrl, fileId: nil, delegate: self)
+        YCBackgroundSession.bgSession.download(url: downloadUrl, fileId: nil, delegate: self)
     }
     
     @IBAction func pause(_ sender: Any) {
+        YCBackgroundSession.bgSession.pauseDownload(url: downloadUrl)
     }
     @IBAction func resume(_ sender: Any) {
+        YCBackgroundSession.bgSession.resumeDownload(url: downloadUrl)
     }
     @IBAction func remove(_ sender: Any) {
+        YCBackgroundSession.bgSession.removeDownload(url: downloadUrl)
     }
     
     

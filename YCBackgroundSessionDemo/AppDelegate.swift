@@ -22,6 +22,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let rootVC = UINavigationController(rootViewController: vc)
         window?.rootViewController = rootVC
         window?.makeKeyAndVisible()
+        print(NSHomeDirectory())
         return true
     }
 

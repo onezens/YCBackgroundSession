@@ -11,7 +11,7 @@ import UIKit
 enum YCSessionTaskStatus {
     case waiting
     case downloading
-    case pause
+    case paused
     case stop
     case finished
 }
@@ -55,11 +55,10 @@ class YCSessionTask: YCoderObject {
 
     @objc class func saveDir() -> String{
         
-        let path = NSSearchPathForDirectoriesInDomains(FileManager.SearchPathDirectory.documentDirectory, FileManager.SearchPathDomainMask.userDomainMask, false).first! + "/YCBackgroundSession"
+        let path = NSSearchPathForDirectoriesInDomains(.cachesDirectory, .userDomainMask, true).first! + "/YCBackgroundSession"
         if !FileManager.default.fileExists(atPath: path) {
             try? FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
         }
-        
         return path
     }
 }
