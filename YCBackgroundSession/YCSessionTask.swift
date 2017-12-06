@@ -70,7 +70,7 @@ public class YCDownloadTask: YCSessionTask {
     }
     
     required public init?(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+        super.init(coder: aDecoder)
     }
     
     override func getIgnoreKey() -> [String] {
@@ -121,11 +121,38 @@ public class YCDownloadTask: YCSessionTask {
 
 
 public class YCUploadTask: YCSessionTask {
-    @objc dynamic var localPath: String?
+    @objc dynamic var localPath: String
+    /// post upload form file key default is file
+    @objc dynamic var uploadFileKey: String = "file"
     @objc dynamic var uploadTask: URLSessionUploadTask?
     @objc dynamic weak var delegate: YCUploadTaskDelegate?
-    @objc dynamic var headers: [String:Any]?
-    @objc dynamic var formParmaters: [String:Any]?
+    @objc dynamic var headers: [String:String]?
+    @objc dynamic var formParmaters: [String:String]?
+    
+    init(url: String, localPath: String, headers:[String:String]?, params: [String:String]? = nil, delegate: YCUploadTaskDelegate?, uploadFileKey: String = "file") {
+        self.localPath = localPath
+        super.init(url: url)
+        self.headers = headers
+        self.formParmaters = params
+        self.uploadFileKey = uploadFileKey
+    }
+    
+    required public init?(coder aDecoder: NSCoder) {
+        self.localPath = aDecoder.decodeObject(forKey: "localPath") as! String
+        super.init(coder: aDecoder)
+    }
+    
+    // MARK: - public
+    @objc func boundary() -> String {
+        return "--YCBGSFormBoundary" + MD5(localPath)
+    }
+    
+    @objc func contentType() -> String {
+        return "multipart/form-data; charset=utf-8;boundary=\(boundary())"
+    }
+    @objc func fileName() -> String {
+        return localPath.components(separatedBy: "/").last ?? "unkown.filename"
+    }
 }
 
 

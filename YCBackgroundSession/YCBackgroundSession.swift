@@ -81,13 +81,16 @@ class YCBackgroundSession: NSObject {
     }
     
     // MARK: - upload public
-    
-    @objc func uploadFileStream(url: String, localPath: String, headers: [String: Any]? , delegate: YCUploadTaskDelegate?) {
-        
+    @objc func uploadFileStream(url: String, localPath: String, headers: [String: String]? , delegate: YCUploadTaskDelegate?) -> YCUploadTask {
+        let task = YCUploadTask(url: url, localPath: localPath, headers: headers, delegate: delegate)
+        startUploadFileStream(task: task)
+        return task
     }
     
-    @objc func uploadFormStream(url: String, localPath: String, params: [String: Any]?, headers: [String: Any]? , delegate: YCUploadTaskDelegate?) {
-        
+    @objc func uploadFormStream(url: String, localPath: String, params: [String: String]?, headers: [String: String]? , delegate: YCUploadTaskDelegate?, uploadFileKey: String = "file") -> YCUploadTask {
+        let task = YCUploadTask(url: url, localPath: localPath, headers: headers, params: params, delegate: delegate, uploadFileKey: uploadFileKey)
+        startUploadFormStream(task: task)
+        return task
     }
     
     @objc func pauseUpload(task: YCSessionTask) {
@@ -169,6 +172,68 @@ class YCBackgroundSession: NSObject {
     }
     
     // MARK: - upload private
+    private func startUploadFileStream(task: YCUploadTask){
+        let url = URL(string: task.url)!
+        let request = NSMutableURLRequest(url: url)
+        request.httpMethod = "POST"
+        if let headers = task.headers {
+            for (key, value) in headers {
+                request.addValue(value, forHTTPHeaderField: key)
+            }
+        }
+        //session create upload task and internal generate request headers
+        let sessionTask = uploadSession.uploadTask(with: request as URLRequest, fromFile: URL(fileURLWithPath: task.localPath))
+        task.uploadTask = sessionTask
+        sessionTask.resume()
+    }
+    
+    private func startUploadFormStream(task: YCUploadTask){
+        let url = URL(string: task.url)!
+        let request = NSMutableURLRequest(url: url)
+        request.httpMethod = "POST"
+        //generate inputstream with form data
+        let uploadData = uploadFormStreamData(task: task)
+        //must set request header: Content-Type Content-Length ,otherwise upload request can`t continue
+        request.addValue(task.contentType(), forHTTPHeaderField: "Content-Type")
+        request.addValue("\((uploadData as NSData).length)", forHTTPHeaderField: "Content-Length")
+        request.httpBodyStream = InputStream(data: uploadData)
+        if let headers = task.headers {
+            for (key, value) in headers {
+                request.addValue(value, forHTTPHeaderField: key)
+            }
+        }
+        let sessionTask = uploadSession.uploadTask(withStreamedRequest: request as URLRequest)
+        task.uploadTask = sessionTask
+        sessionTask.resume()
+    }
+    
+    private func uploadFormStreamData(task: YCUploadTask) -> Data {
+        
+        let data = NSMutableData()
+        let startStr = NSMutableString()
+        let utf8Encode = String.Encoding.utf8.rawValue
+        startStr.append("--" + task.boundary() + "\r\n")
+        startStr.append("Content-Disposition: form-data; name=\"\(task.uploadFileKey)\"; filename=\"\(task.fileName())\"\r\n\r\n")
+        data.append(startStr.data(using: utf8Encode)!)
+        let fileData = (try? Data(contentsOf: URL(fileURLWithPath: task.localPath))) ?? ("error file data".data(using: .utf8))!
+        data.append(fileData)
+//        data.append("fileData".data(using: .utf8)!)
+        data.append("\r\n".data(using: .utf8)!)
+        if let formParmaters = task.formParmaters {
+            for (key, value) in formParmaters {
+                let otherStr = NSMutableString()
+                otherStr.append("--" + task.boundary() + "\r\n")
+                otherStr.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n")
+                otherStr.append(value + "\r\n")
+                data.append(otherStr.data(using: utf8Encode)!)
+            }
+        }
+        let endStr = NSMutableString()
+        endStr.append("--\(task.boundary())--")
+        data.append(endStr.data(using: utf8Encode)!)
+//        print(String(data: data as Data, encoding: .utf8)!)
+        return data as Data
+    }
     
     // MARK: - task init private
     private func getBackgroundSession(type: YCBackgroundSessionType) -> URLSession{
@@ -246,7 +311,6 @@ class YCBackgroundSession: NSObject {
 extension YCBackgroundSession:URLSessionDelegate, URLSessionTaskDelegate, URLSessionDownloadDelegate, URLSessionDataDelegate {
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
        
-        
         if let task = taskForUrlSessionTask(sessionTask: downloadTask){
             let fileMgr = FileManager.default
             let tmpFileInfo = try? fileMgr.attributesOfItem(atPath: location.path)
@@ -268,8 +332,9 @@ extension YCBackgroundSession:URLSessionDelegate, URLSessionTaskDelegate, URLSes
             task.downloadTask = nil
             downloadStatusChanged(task: task, status: .failed)
             print("download finished error !")
+        }else{
+            print("download finished error , YCDownloadTask not found !!!!!")
         }
-        print("download finished error , YCDownloadTask not found !!!!!")
     }
     
    
@@ -295,25 +360,35 @@ extension YCBackgroundSession:URLSessionDelegate, URLSessionTaskDelegate, URLSes
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         
-        let downloadTask = taskForUrlSessionTask(sessionTask: task)
-        if let err = error{
-            let errInfo = (err as NSError).userInfo
-            let resumeData = errInfo["NSURLSessionDownloadTaskResumeData"]
-            if let data = resumeData as? Data{
-                downloadTask?.resumeData = data
-                downloadStatusChanged(task: downloadTask, status: .paused)
-                print("pause success! resumeDataLength: \((resumeData as! NSData).length)")
-                return
+        if task.isKind(of: URLSessionDownloadTask.self) {
+            let downloadTask = taskForUrlSessionTask(sessionTask: task)
+            if let err = error{
+                let errInfo = (err as NSError).userInfo
+                let resumeData = errInfo["NSURLSessionDownloadTaskResumeData"]
+                if let data = resumeData as? Data{
+                    downloadTask?.resumeData = data
+                    downloadStatusChanged(task: downloadTask, status: .paused)
+                    print("pause success! resumeDataLength: \((resumeData as! NSData).length)")
+                    return
+                }
             }
+            print("didCompleteWithError : " + error.debugDescription)
+            downloadStatusChanged(task: downloadTask, status: .failed)
+        }else if task.isKind(of: URLSessionUploadTask.self){
+            print("upload didCompleteWithError: " + error.debugDescription)
         }
-        print("didCompleteWithError : " + error.debugDescription)
-        downloadStatusChanged(task: downloadTask, status: .failed)
+
     }
     
+    // MARK:upload
     func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
         
         print("upload progress: \(Float(totalBytesSent) / Float(totalBytesExpectedToSend))")
     }
     
+    func urlSession(_ session: URLSession, task: URLSessionTask, needNewBodyStream completionHandler: @escaping (InputStream?) -> Void) {
+        
+        completionHandler(task.originalRequest?.httpBodyStream)
+    }
 }
 
