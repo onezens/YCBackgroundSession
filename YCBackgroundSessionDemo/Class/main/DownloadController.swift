@@ -12,7 +12,7 @@ class DownloadController: UIViewController {
 
 //    let downloadUrl = "http://dldir1.qq.com/qqfile/QQforMac/QQ_V6.0.1.dmg"
     let downloadUrl = "http://upload-images.jianshu.io/upload_images/1216462-b6d38648235908c7.png"
-    var task: YCSessionTask?
+    var task: YCDownloadTask?
     
     @IBOutlet weak var progressLbl: UILabel!
     @IBOutlet weak var statusLbl: UILabel!
@@ -53,8 +53,9 @@ class DownloadController: UIViewController {
     }
 }
 
-extension DownloadController: YCSessionTaskDelegate {
-    func downloadStatusChanged(task: YCSessionTask) {
+extension DownloadController: YCDownloadTaskDelegate {
+    
+    func downloadStatusChanged(task: YCDownloadTask) {
         var statusTxt = "NA"
         switch task.status {
         case .waiting:

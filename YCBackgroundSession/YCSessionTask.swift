@@ -8,10 +8,16 @@
 
 import UIKit
 
-@objc public protocol YCSessionTaskDelegate: NSObjectProtocol {
-    @objc optional func downloadStatusChanged(task: YCSessionTask) -> Void
+@objc public protocol YCDownloadTaskDelegate: NSObjectProtocol {
+    @objc optional func downloadStatusChanged(task: YCDownloadTask) -> Void
     @objc optional func downloadProgress(downloadSize: Int64, fileSize: Int64)
 }
+
+@objc public protocol YCUploadTaskDelegate: NSObjectProtocol {
+
+}
+
+
 
 @objc enum YCSessionTaskStatus: Int {
     case waiting
@@ -24,23 +30,12 @@ import UIKit
 public class YCSessionTask: YCoderObject {
 
     @objc dynamic var url: String
-    @objc dynamic var fileId: String?
-    @objc dynamic weak var delegate: YCSessionTaskDelegate?
-    @objc dynamic var downloadTask: URLSessionDownloadTask?
-    @objc dynamic var uploadTask: URLSessionUploadTask?
     @objc dynamic var status: YCSessionTaskStatus = .waiting
     @objc dynamic var fileSize: Int64 = 0
     @objc dynamic var completedSize: Int64 = 0
-    @objc dynamic var resumeData: Data?
-    @objc dynamic var suggestName: String?
-    @objc dynamic var tmpName: String? //decode resumeData
-    @objc dynamic var uploadFilePath: String?
-
-    // MARK: - init
-    init(url: String, delegate: YCSessionTaskDelegate?, fileId: String?) {
+    
+    init(url: String) {
         self.url = url
-        self.delegate = delegate
-        self.fileId = fileId
         super.init()
     }
     
@@ -48,14 +43,40 @@ public class YCSessionTask: YCoderObject {
         self.url = aDecoder.decodeObject(forKey: "url") as! String
         super.init(coder: aDecoder)
     }
+
+    @objc class func saveDir() -> String{
+        
+        let path = NSSearchPathForDirectoriesInDomains(.cachesDirectory, .userDomainMask, true).first! + "/YCBackgroundSession"
+        if !FileManager.default.fileExists(atPath: path) {
+            try? FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
+        }
+        return path
+    }
+}
+
+public class YCDownloadTask: YCSessionTask {
+    @objc dynamic var fileId: String?
+    @objc dynamic var downloadTask: URLSessionDownloadTask?
+    @objc dynamic var resumeData: Data?
+    @objc dynamic var suggestName: String?
+    @objc dynamic var tmpName: String? //decode resumeData
+    @objc dynamic weak var delegate: YCDownloadTaskDelegate?
+    
+    // MARK: - init
+    init(url: String, delegate: YCDownloadTaskDelegate?, fileId: String?) {
+        super.init(url: url)
+        self.delegate = delegate
+        self.fileId = fileId
+    }
+    
+    required public init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
     
     override func getIgnoreKey() -> [String] {
         return ["delegate", "downloadTask", "uploadTask"]
     }
     
-    // MARK: - private
-    
-
     // MARK: - public
     @objc func updateInfo(response: HTTPURLResponse?) {
         suggestName = response?.suggestedFilename
@@ -68,7 +89,7 @@ public class YCSessionTask: YCoderObject {
     }
     
     @objc func saveName() -> String {
-        let name = YCSessionTask.downloadId(url: self.url, fileId: self.fileId)
+        let name = YCDownloadTask.downloadId(url: self.url, fileId: self.fileId)
         if let pathExtension = url.components(separatedBy: ".").last {
             return (name + pathExtension)
         }
@@ -96,17 +117,15 @@ public class YCSessionTask: YCoderObject {
         let name = url + (fileId ?? "")
         return MD5(name)
     }
+}
 
-    @objc class func saveDir() -> String{
-        
-        let path = NSSearchPathForDirectoriesInDomains(.cachesDirectory, .userDomainMask, true).first! + "/YCBackgroundSession"
-        if !FileManager.default.fileExists(atPath: path) {
-            try? FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
-        }
-        return path
-    }
-    
-    
+
+public class YCUploadTask: YCSessionTask {
+    @objc dynamic var localPath: String?
+    @objc dynamic var uploadTask: URLSessionUploadTask?
+    @objc dynamic weak var delegate: YCUploadTaskDelegate?
+    @objc dynamic var headers: [String:Any]?
+    @objc dynamic var formParmaters: [String:Any]?
 }
 
 

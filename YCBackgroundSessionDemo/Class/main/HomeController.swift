@@ -54,7 +54,7 @@ extension HomeController: UITableViewDelegate, UITableViewDataSource {
         if indexPath.row == 0 {
             self.navigationController?.pushViewController(DownloadController.myController(), animated: true)
         }else if indexPath.row == 1{
-            self.navigationController?.pushViewController(UploadController(), animated: true)
+            self.navigationController?.pushViewController(UploadController.myController(), animated: true)
         }
     }
     

@@ -17,6 +17,11 @@ class UploadController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = UIColor.white
     }
+    
+    class func myController() -> UIViewController {
+        let sb = UIStoryboard.init(name: "Main", bundle: nil)
+        return sb.instantiateViewController(withIdentifier: "UploadController")
+    }
 
     @IBAction func start(_ sender: Any) {
     }
