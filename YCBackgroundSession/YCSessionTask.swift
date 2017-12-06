@@ -9,8 +9,8 @@
 import UIKit
 
 @objc public protocol YCSessionTaskDelegate: NSObjectProtocol {
-    func downloadStatusChanged(task: YCSessionTask) -> Void
-    func downloadProgress(downloadSize: Int64, fileSize: Int64)
+    @objc optional func downloadStatusChanged(task: YCSessionTask) -> Void
+    @objc optional func downloadProgress(downloadSize: Int64, fileSize: Int64)
 }
 
 @objc enum YCSessionTaskStatus: Int {
@@ -25,7 +25,7 @@ public class YCSessionTask: YCoderObject {
 
     @objc dynamic var url: String
     @objc dynamic var fileId: String?
-    @objc dynamic var delegate: YCSessionTaskDelegate?
+    @objc dynamic weak var delegate: YCSessionTaskDelegate?
     @objc dynamic var downloadTask: URLSessionDownloadTask?
     @objc dynamic var uploadTask: URLSessionUploadTask?
     @objc dynamic var status: YCSessionTaskStatus = .waiting
@@ -34,6 +34,7 @@ public class YCSessionTask: YCoderObject {
     @objc dynamic var resumeData: Data?
     @objc dynamic var suggestName: String?
     @objc dynamic var tmpName: String? //decode resumeData
+    @objc dynamic var uploadFilePath: String?
 
     // MARK: - init
     init(url: String, delegate: YCSessionTaskDelegate?, fileId: String?) {

@@ -82,6 +82,25 @@ class YCBackgroundSession: NSObject {
     
     // MARK: - upload public
     
+    @objc func uploadFileStream(url: String, localPath: String, headers: [String: Any]? , delegate: YCSessionTaskDelegate?) {
+        
+    }
+    
+    @objc func uploadFormStream(url: String, localPath: String, params: [String: Any]?, headers: [String: Any]? , delegate: YCSessionTaskDelegate?) {
+        
+    }
+    
+    @objc func pauseUpload(task: YCSessionTask) {
+        
+    }
+    
+    @objc func resumeUpload(task: YCSessionTask) {
+        
+    }
+    
+    @objc func removeUpload(task: YCSessionTask) {
+        
+    }
     
     // MARK: - download private
     private func startDownload(task: YCSessionTask) {
@@ -128,7 +147,7 @@ class YCBackgroundSession: NSObject {
         task?.status = status
         saveDownloadInfo()
         if ((task?.delegate) != nil) && (task?.delegate?.responds(to: #selector(YCSessionTaskDelegate.downloadStatusChanged(task:))))! {
-            task?.delegate?.downloadStatusChanged(task: task!)
+            task?.delegate?.downloadStatusChanged!(task: task!)
         }
         startNextDownload()
     }
@@ -270,7 +289,7 @@ extension YCBackgroundSession:URLSessionDelegate, URLSessionTaskDelegate, URLSes
             task?.updateInfo(response: downloadTask.response as? HTTPURLResponse)
         }
         if ((task?.delegate) != nil) && (task?.delegate?.responds(to: #selector(YCSessionTaskDelegate.downloadProgress(downloadSize:fileSize:))))! {
-            task?.delegate?.downloadProgress(downloadSize: totalBytesWritten, fileSize: totalBytesExpectedToWrite)
+            task?.delegate?.downloadProgress!(downloadSize: totalBytesWritten, fileSize: totalBytesExpectedToWrite)
         }
     }
     

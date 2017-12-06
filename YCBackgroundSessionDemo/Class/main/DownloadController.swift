@@ -8,7 +8,7 @@
 
 import UIKit
 
-class ViewController: UIViewController {
+class DownloadController: UIViewController {
 
 //    let downloadUrl = "http://dldir1.qq.com/qqfile/QQforMac/QQ_V6.0.1.dmg"
     let downloadUrl = "http://upload-images.jianshu.io/upload_images/1216462-b6d38648235908c7.png"
@@ -21,6 +21,7 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         title = "YCBackgroundSession"
+        view.backgroundColor = UIColor.white
     }
     
     class func myController() -> UIViewController {
@@ -52,7 +53,7 @@ class ViewController: UIViewController {
     }
 }
 
-extension ViewController: YCSessionTaskDelegate {
+extension DownloadController: YCSessionTaskDelegate {
     func downloadStatusChanged(task: YCSessionTask) {
         var statusTxt = "NA"
         switch task.status {
