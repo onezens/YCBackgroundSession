@@ -10,7 +10,8 @@ import UIKit
 
 class ViewController: UIViewController {
 
-    let downloadUrl = "http://dldir1.qq.com/qqfile/QQforMac/QQ_V6.0.1.dmg"
+//    let downloadUrl = "http://dldir1.qq.com/qqfile/QQforMac/QQ_V6.0.1.dmg"
+    let downloadUrl = "http://upload-images.jianshu.io/upload_images/1216462-b6d38648235908c7.png"
     var task: YCSessionTask?
     
     @IBOutlet weak var progressLbl: UILabel!

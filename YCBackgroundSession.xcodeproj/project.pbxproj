@@ -46,6 +46,7 @@
 		353328841FD4DF0100222743 = {
 			isa = PBXGroup;
 			children = (
+				353328A21FD4DF6D00222743 /* YCBackgroundSession */,
 				3533288F1FD4DF0100222743 /* YCBackgroundSessionDemo */,
 				3533288E1FD4DF0100222743 /* Products */,
 			);
@@ -62,7 +63,6 @@
 		3533288F1FD4DF0100222743 /* YCBackgroundSessionDemo */ = {
 			isa = PBXGroup;
 			children = (
-				353328A21FD4DF6D00222743 /* YCBackgroundSession */,
 				353328901FD4DF0100222743 /* AppDelegate.swift */,
 				353328921FD4DF0100222743 /* ViewController.swift */,
 				353328971FD4DF0100222743 /* Assets.xcassets */,

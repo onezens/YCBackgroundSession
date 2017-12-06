@@ -208,7 +208,6 @@ class YCBackgroundSession: NSObject {
     private func taskForUrlSessionTask(sessionTask: URLSessionTask) -> YCSessionTask? {
         
         let request = (sessionTask.originalRequest != nil) ? sessionTask.originalRequest : sessionTask.currentRequest
-        
         if let taskUrl = request?.url?.absoluteString {
             var downloadTask: YCSessionTask?
             for (_, task) in self.downloadTasksDictM {
@@ -220,17 +219,38 @@ class YCBackgroundSession: NSObject {
             return downloadTask
         }
         return nil
-        
     }
-    
-    
 }
 
 
 // MARK: - URLSessionDelegate
 extension YCBackgroundSession:URLSessionDelegate, URLSessionTaskDelegate, URLSessionDownloadDelegate, URLSessionDataDelegate {
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        print("didFinishDownloadingTo")
+       
+        
+        if let task = taskForUrlSessionTask(sessionTask: downloadTask){
+            let fileMgr = FileManager.default
+            let tmpFileInfo = try? fileMgr.attributesOfItem(atPath: location.path)
+            let fileSize = tmpFileInfo?[FileAttributeKey.size] as? NSNumber
+            if fileSize?.int64Value == task.fileSize && task.fileSize>0 {
+                var moveFileSuccess = true
+                do {
+                    try fileMgr.moveItem(atPath: location.path, toPath: task.savePath())
+                }catch {
+                    print(error)
+                    moveFileSuccess = false
+                }
+                if moveFileSuccess {
+                    downloadStatusChanged(task: task, status: .finished)
+                    print("download finished success !")
+                    return
+                }
+            }
+            task.downloadTask = nil
+            downloadStatusChanged(task: task, status: .failed)
+            print("download finished error !")
+        }
+        print("download finished error , YCDownloadTask not found !!!!!")
     }
     
    
