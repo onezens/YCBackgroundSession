@@ -11,8 +11,10 @@ import UIKit
 class ViewController: UIViewController {
 
     let downloadUrl = "http://dldir1.qq.com/qqfile/QQforMac/QQ_V6.0.1.dmg"
+    var task: YCSessionTask?
     
     @IBOutlet weak var progressLbl: UILabel!
+    @IBOutlet weak var statusLbl: UILabel!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -26,25 +28,51 @@ class ViewController: UIViewController {
     }
     
     @IBAction func start(_ sender: Any) {
-        YCBackgroundSession.bgSession.download(url: downloadUrl, fileId: nil, delegate: self)
+        task = YCBackgroundSession.bgSession.downloadFile(url: downloadUrl, fileId: nil, delegate: self)
     }
     
     @IBAction func pause(_ sender: Any) {
-        YCBackgroundSession.bgSession.pauseDownload(url: downloadUrl)
+        if let task = self.task {
+            task.pause()
+        }
     }
     @IBAction func resume(_ sender: Any) {
-        YCBackgroundSession.bgSession.resumeDownload(url: downloadUrl, delegate: self)
+         if let task = self.task {
+            task.delegate = self
+            task.resume()
+        }
+        
     }
     @IBAction func remove(_ sender: Any) {
-        YCBackgroundSession.bgSession.removeDownload(url: downloadUrl)
+        if let task = self.task {
+            task.remove()
+        }
+        
     }
-    
-    
 }
 
 extension ViewController: YCSessionTaskDelegate {
     func downloadStatusChanged(task: YCSessionTask) {
+        var statusTxt = "NA"
+        switch task.status {
+        case .waiting:
+            statusTxt = "waiting"
+            break
+        case .downloading:
+            statusTxt = "downloading"
+            break
+        case .paused:
+            statusTxt = "paused"
+            break
+        case .finished:
+            statusTxt = "finished"
+            break
+        case .failed:
+            statusTxt = "failed"
+            break
+        }
         
+        statusLbl.text = statusTxt
     }
     
     func downloadProgress(downloadSize: Int64, fileSize: Int64) {

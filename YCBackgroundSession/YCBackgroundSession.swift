@@ -31,42 +31,51 @@ class YCBackgroundSession: NSObject {
     }
 
     // MARK: - download public
-    @objc func download(url: String, fileId: String?, delegate: YCSessionTaskDelegate?){
+    @objc func downloadFile(url: String, fileId: String?, delegate: YCSessionTaskDelegate?) -> YCSessionTask{
         
         let downloadId = YCSessionTask.downloadId(url: url, fileId: fileId)
         var task = downloadTasksDictM[downloadId]
-        if task != nil {
+        if task?.status == .downloading { return task! }
+        if task != nil && task?.resumeData != nil{
             task?.delegate = delegate
             resumeDownload(task: task!)
-            return;
+            return task!
         }
         task = YCSessionTask(url: url, delegate: delegate, fileId: fileId)
         if currentTaskCount() < tasksCount {
             startDownload(task: task!)
+            downloadStatusChanged(task: task, status: .downloading)
+        }else{
+            downloadStatusChanged(task: task, status: .waiting)
         }
         downloadTasksDictM[downloadId] = task
-        downloadStatusChanged(task: task, status: .waiting)
+        return task!
     }
     
-    @objc func pauseDownload(url: String) {
+    @objc func pauseDownloadFile(task: YCSessionTask) -> YCSessionTask {
         
-        if let task =  downloadTasksDictM[url] {
+        if task.status == .paused { return task }
+        if let task =  downloadTasksDictM[YCSessionTask.downloadId(url: task.url, fileId: task.fileId)] {
             self.pauseDownload(task: task)
             self.downloadStatusChanged(task: task, status: .paused)
         }
+        return task
     }
     
-    @objc func resumeDownload(url: String, delegate: YCSessionTaskDelegate?) {
+    @objc func resumeDownloadFile(task: YCSessionTask) -> YCSessionTask {
         
-        if let task =  downloadTasksDictM[url] {
+        if task.status == .downloading { return task}
+        
+        if let task =  downloadTasksDictM[YCSessionTask.downloadId(url: task.url, fileId: task.fileId)] {
             resumeDownload(task: task)
             self.downloadStatusChanged(task: task, status: .downloading)
         }
+        return task
         
     }
     
-    @objc func removeDownload(url: String) {
-        if let task =  downloadTasksDictM[url] {
+    @objc func removeDownload(task: YCSessionTask) {
+        if let task =  downloadTasksDictM[YCSessionTask.downloadId(url: task.url, fileId: task.fileId)] {
             stopDownload(task: task)
         }
     }
@@ -95,6 +104,7 @@ class YCBackgroundSession: NSObject {
             downloadStatusChanged(task: task, status: .downloading)
             return
         }
+        
         self.startDownload(task: task)
     }
     
@@ -102,7 +112,7 @@ class YCBackgroundSession: NSObject {
         task.downloadTask?.cancel()
         removeDiskFile(task: task)
         downloadTasksDictM.removeValue(forKey: YCSessionTask.downloadId(url: task.url, fileId: task.fileId))
-        saveInfo()
+        saveDownloadInfo()
     }
     
     private func stopAllDownload() {
@@ -111,12 +121,12 @@ class YCBackgroundSession: NSObject {
             removeDiskFile(task: task)
         }
         downloadTasksDictM.removeAll()
-        saveInfo()
+        saveDownloadInfo()
     }
     
     private func downloadStatusChanged(task: YCSessionTask?, status: YCSessionTaskStatus){
-        task?.taskStatus = status
-        saveInfo()
+        task?.status = status
+        saveDownloadInfo()
         if ((task?.delegate) != nil) && (task?.delegate?.responds(to: #selector(YCSessionTaskDelegate.downloadStatusChanged(task:))))! {
             task?.delegate?.downloadStatusChanged(task: task!)
         }
@@ -127,7 +137,7 @@ class YCBackgroundSession: NSObject {
         
         if currentTaskCount() < tasksCount {
             for (_, task) in self.downloadTasksDictM {
-                if task.taskStatus == .waiting {
+                if task.status == .waiting {
                     startDownload(task: task)
                     break
                 }
@@ -175,10 +185,15 @@ class YCBackgroundSession: NSObject {
         return [String: YCSessionTask]()
     }
     
-    private func saveInfo() {
-        let uploadPath = YCSessionTask.saveDir() + "/upload.data"
+    private func saveDownloadInfo() {
+        
         let downloadPath = YCSessionTask.saveDir() + "/download.data"
         NSKeyedArchiver.archiveRootObject(self.downloadTasksDictM, toFile: downloadPath)
+
+    }
+    
+    private func saveUploadInfo() {
+        let uploadPath = YCSessionTask.saveDir() + "/upload.data"
         NSKeyedArchiver.archiveRootObject(self.uploadTasksDictM, toFile: uploadPath)
     }
     
@@ -192,8 +207,17 @@ class YCBackgroundSession: NSObject {
     
     private func taskForUrlSessionTask(sessionTask: URLSessionTask) -> YCSessionTask? {
         
-        if let taskUrl = sessionTask.originalRequest?.url?.absoluteString {
-            return self.downloadTasksDictM[taskUrl]
+        let request = (sessionTask.originalRequest != nil) ? sessionTask.originalRequest : sessionTask.currentRequest
+        
+        if let taskUrl = request?.url?.absoluteString {
+            var downloadTask: YCSessionTask?
+            for (_, task) in self.downloadTasksDictM {
+                if task.url == taskUrl {
+                    downloadTask = task
+                    break
+                }
+            }
+            return downloadTask
         }
         return nil
         

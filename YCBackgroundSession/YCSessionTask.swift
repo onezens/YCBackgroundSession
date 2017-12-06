@@ -25,11 +25,10 @@ public class YCSessionTask: YCoderObject {
 
     @objc dynamic var url: String
     @objc dynamic var fileId: String?
-    @objc dynamic var filePath: String?
     @objc dynamic var delegate: YCSessionTaskDelegate?
     @objc dynamic var downloadTask: URLSessionDownloadTask?
     @objc dynamic var uploadTask: URLSessionUploadTask?
-    @objc dynamic var taskStatus: YCSessionTaskStatus = .waiting
+    @objc dynamic var status: YCSessionTaskStatus = .waiting
     @objc dynamic var fileSize: Int64 = 0
     @objc dynamic var completedSize: Int64 = 0
     @objc dynamic var resumeData: Data?
@@ -78,6 +77,19 @@ public class YCSessionTask: YCoderObject {
         return name
     }
     
+    
+    @objc func resume(){
+        _ = YCBackgroundSession.bgSession.resumeDownloadFile(task: self)
+    }
+    
+    @objc func pause(){
+        _ = YCBackgroundSession.bgSession.pauseDownloadFile(task: self)
+    }
+    
+    @objc func remove(){
+        YCBackgroundSession.bgSession.removeDownload(task: self)
+    }
+    
     @objc class func downloadId(url: String, fileId: String?) -> String {
         
         let name = url + (fileId ?? "")
@@ -92,6 +104,7 @@ public class YCSessionTask: YCoderObject {
         }
         return path
     }
+    
     
 }
 
